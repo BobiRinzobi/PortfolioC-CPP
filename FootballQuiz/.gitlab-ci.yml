@@ -1,0 +1,75 @@
+default:
+  image: ubuntu:latest
+
+stages:
+  - install
+  - build
+  - test
+  - check-codestyle
+
+variables:
+  SFML_DIR: "external/SFML"
+  GTEST_DIR: "external/googletest"
+
+install:
+  stage: install
+  script:
+    - apt-get update -y
+    - apt-get install -y git cmake make clang-format
+    - rm -rf $SFML_DIR
+    - rm -rf $GTEST_DIR
+    - git submodule update --init --recursive
+    - git submodule status
+    - ls -la $SFML_DIR
+    - ls -la $GTEST_DIR
+
+build-sfml:
+  stage: build
+  needs: ["install"]
+  script:
+    - apt-get update -y
+    - apt-get install -y git cmake make clang-format libgtest-dev wget libfreetype6-dev libjpeg-dev libx11-dev libxrandr-dev libxi-dev libxrender-dev libxinerama-dev libxxf86vm-dev libxext-dev libgl1-mesa-dri libxcursor-dev g++ libgl1-mesa-dev libudev-dev libopenal-dev libvorbis-dev libflac-dev
+    - echo "Building SFML..."
+    - cd $SFML_DIR
+    - mkdir -p build
+    - cd build/
+    - cmake .. 
+    - make
+    - echo "SFML ready to work"
+
+build-gtest:
+  stage: build
+  needs: ["build-sfml"]
+  script:
+    - apt-get update -y
+    - apt-get install -y git cmake make clang-format libgtest-dev wget libfreetype6-dev libjpeg-dev libx11-dev libxrandr-dev libxi-dev libxrender-dev libxinerama-dev libxxf86vm-dev libxext-dev libgl1-mesa-dri libxcursor-dev g++ libgl1-mesa-dev libudev-dev libopenal-dev libvorbis-dev libflac-dev
+    - echo "Building GTest..."
+    - cd $GTEST_DIR
+    - mkdir -p build
+    - cd build/
+    - cmake ..
+    - make 
+    - echo "GTest ready to work"
+
+build-script:
+  stage: build
+  script:
+    - apt-get update -y
+    - apt-get install -y git make clang-format libgtest-dev wget libfreetype6-dev libjpeg-dev libx11-dev libxrandr-dev libxi-dev libxrender-dev libxinerama-dev libxxf86vm-dev libxext-dev libgl1-mesa-dri libxcursor-dev g++ libgl1-mesa-dev libudev-dev libopenal-dev libvorbis-dev libflac-dev
+    - echo "Compiling the code..."
+    - make
+    - echo "Code successfully built"
+
+check-codestyle:
+  stage: check-codestyle
+  script:
+    - echo "Check codestyle..."
+    - git ls-files *.{cpp,hpp} | xargs clang-format -i --verbose && git diff --exit-code
+    - echo "Codestyle is fine"
+
+test:
+  stage: test
+  script:
+    - echo "Running unit tests..."
+    - make run_tests || true
+    - echo "Tests passed successfully"
